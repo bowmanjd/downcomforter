@@ -12,21 +12,36 @@
 # specific language governing permissions and limitations under the License.
 
 import sys
+import importlib.resources
+
 from livereload import Server
 
 from . import down
 from . import matter
+from . import highlight
 
 
-def make_app(filename):
+def make_app(mdfilename, cssfilename=None, tplfilename=None):
     def app(env, start_response):
-        conf, content = matter.load_matter(filename)
-        output = down.md_to_html(content.format(**conf)).encode("utf-8")
+        if env.get("PATH_INFO").endswith("css"):
+            if cssfilename is None:
+                pass
+                output = importlib.resources.read_text(__package__, "style.css")
+            else:
+                with open(cssfilename) as f:
+                    output = f.read().encode("utf-8")
+                content_type = "text/css"
+        else:
+            conf, content = matter.load_matter(mdfilename)
+            coded = highlight.codedoc(content)
+            html = down.md_to_html(coded, tplfilename)
+            output = html.format(**conf).encode("utf-8")
+            content_type = "text/html"
 
         start_response(
             "200 OK",
             [
-                ("Content-Type", "text/html; charset=utf-8"),
+                ("Content-Type", f"{content_type}; charset=utf-8"),
                 ("Content-Length", str(len(output))),
             ],
         )
@@ -37,8 +52,9 @@ def make_app(filename):
 
 
 if __name__ == "__main__":
-    filename = sys.argv[1]
-    print(filename)
-    server = Server(make_app(filename))
-    server.watch(filename)
-    server.serve()
+    md = sys.argv[1]
+    css = sys.argv[2]
+    print(md)
+    server = Server(make_app(md, css))
+    server.watch(md)
+    server.serve(host="0.0.0.0")

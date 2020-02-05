@@ -12,20 +12,36 @@
 # specific language governing permissions and limitations under the License.
 
 import importlib.resources
+import re
 
-try:
-    from paka.cmark import to_html as parse
-except ModuleNotFoundError:
-    try:
-        from cmarkgfm import markdown_to_html as parse
-    except ModuleNotFoundError:
-        from mistletoe import markdown as parse
+import cmarkgfm
+
+from . import cmarkopt
 
 
-def md_to_html(md):
-    content = parse(md)
-    template = importlib.resources.read_text(__package__, "index.html")
+def mdparse(md):
+    """A separate function that can be adapted to a particular Markdown implementation"""
+    parsed = cmarkgfm.markdown_to_html(md, cmarkopt.SMART | cmarkopt.UNSAFE)
+    return parsed
+
+
+def md_to_html(md, tpl_filename=None):
+    if tpl_filename is None:
+        template = importlib.resources.read_text(__package__, "index.html")
+    else:
+        with open(tpl_filename) as f:
+            template = f.read()
+    content = mdparse(md)
     return template.format(content=content)
+
+
+def tpl(content, template=None):
+    if template is None:
+        return content
+    else:
+        template = bracify(template)
+        content = template.format(content=content)
+        return tpl(content)
 
 
 if __name__ == "__main__":

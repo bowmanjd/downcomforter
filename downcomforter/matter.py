@@ -20,10 +20,11 @@ delimiter = re.compile(r"^---(json|toml|yaml)?$", re.MULTILINE)
 def matter(text):
     result = delimiter.split(text, 2)
     front = {}
+    content = ""
     try:
         _, lang, frontmatter, _, content = result
     except ValueError:
-        pass
+        content = text
     else:
         if lang == "json":
             import json
