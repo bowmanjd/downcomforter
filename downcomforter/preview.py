@@ -19,6 +19,7 @@ from livereload import Server
 from . import down
 from . import matter
 from . import highlight
+from . import pattern
 
 
 def make_app(mdfilename, cssfilename=None, tplfilename=None):
@@ -32,10 +33,11 @@ def make_app(mdfilename, cssfilename=None, tplfilename=None):
                     output = f.read().encode("utf-8")
                 content_type = "text/css"
         else:
-            conf, content = matter.load_matter(mdfilename)
-            coded = highlight.codedoc(content)
-            html = down.md_to_html(coded, tplfilename)
-            output = html.format(**conf).encode("utf-8")
+            # conf, content = matter.load_matter(mdfilename)
+            # coded = highlight.codedoc(content)
+            # html = down.md_to_html(coded, tplfilename)
+            # output = html.format(**conf).encode("utf-8")
+            output = pattern.loader(mdfilename).encode("utf-8")
             content_type = "text/html"
 
         start_response(

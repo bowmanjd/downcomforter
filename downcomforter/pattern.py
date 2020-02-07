@@ -18,18 +18,18 @@ from . import matter
 from . import down
 from . import highlight
 
-# brace_re = re.compile(r"{([^}]+)}")
-brace_re = re.compile(r"{(?!content)([^}]+)}")
+brace_re = re.compile(r"{([^}]+)}")
+tpl_re = re.compile(r"(?!{content}){([^}]+)}")
 
 
-def double_braces(text):
-    escaped = brace_re.sub(r"{{\1}}", text)
+def escape_braces(text, pattern=brace_re):
+    escaped = pattern.sub(r"{{\1}}", text)
     return escaped
 
 
 def codedown(content):
     coded = highlight.codedoc(content)
-    html = down.parse(coded)
+    html = down.mdparse(coded)
     return html
 
 
@@ -37,36 +37,42 @@ def loader(filename=None, conf={}, content=""):
     """Load file, related files, and build document"""
     # Done if no more files
     if filename is None:
-        return conf, content
+        return content.format(**conf)
     p = Path(filename)
     # Split front matter and raw content
     new_conf, new_content = matter.load_matter(p)
     # ensure raw content is now html
     if p.suffix == ".md":
         new_content = codedown(new_content)
+    # check if this filename was included by previous
     try:
         label = conf["include"].pop(filename)
-    except KeyError:
-        pass
-    else:
-        if label != "parent":
-            conf[label] = new_content
-        else:
-            new_content = double_braces(new_content).format(content=content)
-
-    label = conf.get("include", {}).get(filename, "")
-    includes = new_conf.pop("include", {})
-    for label, pathname in includes.items():
-        if label == "parent":
-            conf = {"content": "", **new_conf, **conf}
-        else:
+    except KeyError:  # not an include
+        conf = {**conf, **new_conf}
+        content = new_content
+    else:  # if this is include, then:
+        if label != "parent":  # refers to child snippet
+            # assign to template var by label; merge in child vars
             conf = {label: new_content, **conf, **new_conf}
+        else:  # refers to parent template
+            # place existing content within loaded new template
+            template = escape_braces(new_content, tpl_re)
+            print(template)
+            content = template.format(content=content)
+            # merge previous vars into template vars
+            conf = {**new_conf, **conf}
+    # check front matter for includes
+    includes = conf.get("include", {})
+    try:  # get next filename from includes, if any
+        print("Has include")
+        filename, label = includes.popitem()
+        print(filename)
+        filepath = p.parent / filename
+        includes[filepath] = label
+    except KeyError:
+        filepath = None
+    return loader(filepath, conf, content)
 
 
-def tpl(content, template=None):
-    if template is None:
-        return content
-    else:
-        template = double_braces(template)
-        content = template.format(content=content)
-        return tpl(content)
+if __name__ == "__main__":
+    pass

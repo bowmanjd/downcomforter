@@ -30,7 +30,7 @@ def codeblock(match):
     except ValueError:
         lexer = TextLexer()
     highlighted = pygments.highlight(code, lexer, formatter)
-    escaped = pattern.double_braces(highlighted)
+    escaped = pattern.escape_braces(highlighted)
     return escaped
 
 
