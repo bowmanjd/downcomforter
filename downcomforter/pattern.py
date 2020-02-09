@@ -11,6 +11,8 @@
 # CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
 
+import functools
+import importlib
 import re
 from pathlib import Path
 
@@ -33,10 +35,39 @@ def codedown(content):
     return html
 
 
+@functools.lru_cache(maxsize=32)
+def import_helper(filepath):
+    spec = importlib.util.spec_from_file_location(f"helper.{filepath.stem}", filepath)
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    return helper
+
+
+def prepare_helpers(conf, directory):
+    helpers = conf.pop("helpers", {})
+    helper_methods = conf.get("helper_methods", {})
+    for filename, method in helpers.items():
+        filepath = (directory / filename).resolve()
+        helper = import_helper(filepath)
+        func = getattr(helper, method)
+        helper_methods[method] = func
+        # conf[method] = func(conf)
+    conf["helper_methods"] = helper_methods
+    return conf
+
+
+def call_helpers(conf):
+    helper_methods = conf.get("helper_methods", {})
+    for name, func in helper_methods.items():
+        conf[name] = func(conf)
+    return conf
+
+
 def loader(filename=None, conf={}, content=""):
     """Load file, related files, and build document"""
     # Done if no more files
     if filename is None:
+        conf = call_helpers(conf)
         return content.format(**conf)
     p = Path(filename)
     # Split front matter and raw content
@@ -57,20 +88,22 @@ def loader(filename=None, conf={}, content=""):
         else:  # refers to parent template
             # place existing content within loaded new template
             template = escape_braces(new_content, tpl_re)
-            print(template)
             content = template.format(content=content)
             # merge previous vars into template vars
             conf = {**new_conf, **conf}
+    # check front matter for helpers
+    prepare_helpers(conf, p.parent)
+
     # check front matter for includes
     includes = conf.get("include", {})
     try:  # get next filename from includes, if any
-        print("Has include")
         filename, label = includes.popitem()
-        print(filename)
-        filepath = p.parent / filename
+        print(conf)  # TODO: why is this printing twice?
+        filepath = (p.parent / filename).resolve()
         includes[filepath] = label
     except KeyError:
         filepath = None
+    print(filepath)
     return loader(filepath, conf, content)
 
 
