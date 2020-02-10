@@ -70,6 +70,7 @@ def loader(filename=None, conf={}, content=""):
         conf = call_helpers(conf)
         return content.format(**conf)
     p = Path(filename)
+    print(p)
     # Split front matter and raw content
     new_conf, new_content = matter.load_matter(p)
     # ensure raw content is now html
@@ -98,12 +99,10 @@ def loader(filename=None, conf={}, content=""):
     includes = conf.get("include", {})
     try:  # get next filename from includes, if any
         filename, label = includes.popitem()
-        print(conf)  # TODO: why is this printing twice?
         filepath = (p.parent / filename).resolve()
         includes[filepath] = label
     except KeyError:
         filepath = None
-    print(filepath)
     return loader(filepath, conf, content)
 
 

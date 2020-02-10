@@ -24,24 +24,30 @@ from . import pattern
 
 def make_app(mdfilename, cssfilename=None, tplfilename=None):
     def app(env, start_response):
+        status = "200 OK"
+        content_type = "text/html"
+        output = ""
+
         if env.get("PATH_INFO").endswith("css"):
             if cssfilename is None:
-                pass
                 output = importlib.resources.read_text(__package__, "style.css")
             else:
                 with open(cssfilename) as f:
-                    output = f.read().encode("utf-8")
+                    output = f.read()
                 content_type = "text/css"
+        elif env.get("PATH_INFO").endswith("favicon.ico"):
+            status = "404 Not Found"
+
         else:
             # conf, content = matter.load_matter(mdfilename)
             # coded = highlight.codedoc(content)
             # html = down.md_to_html(coded, tplfilename)
             # output = html.format(**conf).encode("utf-8")
-            output = pattern.loader(mdfilename).encode("utf-8")
-            content_type = "text/html"
+            output = pattern.loader(mdfilename)
 
+        output = output.encode("utf-8")
         start_response(
-            "200 OK",
+            status,
             [
                 ("Content-Type", f"{content_type}; charset=utf-8"),
                 ("Content-Length", str(len(output))),
