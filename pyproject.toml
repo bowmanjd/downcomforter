@@ -12,6 +12,10 @@ cmarkgfm = "^0.4.2"
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
 ptpython = "^2.0.6"
+pydoc-markdown = {git = "https://github.com/NiklasRosenstein/pydoc-markdown.git"}
+
+[tool.poetry.scripts]
+preview = 'downcomforter.preview:run'
 
 [build-system]
 requires = ["poetry>=0.12"]
